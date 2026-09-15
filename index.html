@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataBridge — Master Data Import Tool</title>
+<meta name="description" content="Transform and validate master data from any source format to your required output. Zero server, zero cost.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --surface-0:#f5f4f0;--surface-1:#f0efe9;--surface-2:#ffffff;
+    --text-primary:#1a1a18;--text-secondary:#5F5E5A;--text-muted:#888780;
+    --text-accent:#185FA5;--text-danger:#A32D2D;--text-success:#3B6D11;--text-warning:#854F0B;
+    --border:rgba(0,0,0,.12);--border-strong:rgba(0,0,0,.2);
+    --border-accent:#378ADD;--border-danger:#A32D2D;--border-success:#3B6D11;
+    --fill-accent:#378ADD;--fill-accent-hover:#185FA5;
+    --bg-accent:#E6F1FB;--bg-danger:#FCEBEB;--bg-success:#EAF3DE;--bg-warning:#FAEEDA;
+    --fill-success:#639922;--fill-danger:#E24B4A;
+    --radius:8px;--font-sans:system-ui,-apple-system,sans-serif;--font-mono:ui-monospace,monospace
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --surface-0:#1a1a18;--surface-1:#222220;--surface-2:#2c2c2a;
+      --text-primary:#f0efe9;--text-secondary:#a0a09a;--text-muted:#686860;
+      --border:rgba(255,255,255,.1);--border-strong:rgba(255,255,255,.18)
+    }
+  }
+  body{font-family:var(--font-sans);background:var(--surface-0);color:var(--text-primary);font-size:14px;line-height:1.5}
+  .h{background:var(--surface-2);border-bottom:0.5px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+  .h-logo{font-size:15px;font-weight:500;letter-spacing:-.3px}
+  .h-logo span{color:var(--text-accent)}
+  .h-right{display:flex;align-items:center;gap:12px}
+  .badge{font-size:11px;padding:2px 8px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent)}
+  .h-link{font-size:12px;color:var(--text-secondary);text-decoration:none}
+  .h-link:hover{color:var(--text-accent)}
+  .wrap{max-width:860px;margin:0 auto;padding:20px 20px 60px}
+  .step{background:var(--surface-2);border:0.5px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .step-hd{display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;user-select:none}
+  .step-hd:hover{background:var(--surface-1)}
+  .step-num{width:22px;height:22px;border-radius:50%;background:var(--fill-accent);color:#fff;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .step-num.done{background:var(--fill-success)}
+  .step-num.inactive{background:var(--surface-1);color:var(--text-muted)}
+  .step-title{font-size:13px;font-weight:500;flex:1}
+  .step-sub{font-size:12px;color:var(--text-secondary)}
+  .chevron{font-size:12px;color:var(--text-muted);transition:transform .15s}
+  .chevron.open{transform:rotate(180deg)}
+  .step-body{padding:0 18px 18px;border-top:0.5px solid var(--border)}
+  .lbl{font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:6px;display:block;margin-top:14px}
+  textarea,input[type=text],input[type=password],select{width:100%;padding:8px 10px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-family:inherit;font-size:13px;background:var(--surface-2);color:var(--text-primary);outline:none}
+  textarea:focus,input:focus,select:focus{box-shadow:0 0 0 2px var(--bg-accent);border-color:var(--border-accent)}
+  textarea{resize:vertical;min-height:80px;font-family:var(--font-mono)}
+  .btn{padding:7px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:0.5px solid var(--border-strong);background:var(--surface-2);color:var(--text-primary);transition:background .1s}
+  .btn:hover{background:var(--surface-1)}
+  .btn-primary{background:var(--fill-accent);color:#fff;border-color:transparent}
+  .btn-primary:hover{background:var(--fill-accent-hover)}
+  .btn:disabled{opacity:.4;cursor:default}
+  .drop-zone{border:1.5px dashed var(--border-strong);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:var(--surface-1)}
+  .drop-zone:hover,.drop-zone.drag{border-color:var(--border-accent);background:var(--bg-accent)}
+  .drop-zone p{font-size:13px;color:var(--text-secondary);margin-top:6px}
+  .file-list{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+  .file-chip{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface-1);border:0.5px solid var(--border);border-radius:var(--radius)}
+  .fn{font-size:12px;font-weight:500}
+  .fs{font-size:11px;color:var(--text-muted);margin-left:6px}
+  .file-rm{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px;line-height:1;padding:2px 4px}
+  .file-rm:hover{color:var(--text-danger)}
+  .col-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;margin-top:8px}
+  .col-hd{font-size:11px;font-weight:500;color:var(--text-muted);padding:0 0 4px}
+  .add-row{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+  .info-box{background:var(--bg-accent);border:0.5px solid var(--border-accent);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-accent);margin-top:12px}
+  .warn-box{background:var(--bg-warning);border:0.5px solid rgba(133,79,11,.4);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-warning)}
+  .err-box{background:var(--bg-danger);border:0.5px solid var(--border-danger);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-danger)}
+  .success-box{background:var(--bg-success);border:0.5px solid var(--border-success);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-success)}
+  .progress-bar{height:4px;background:var(--surface-1);border-radius:2px;overflow:hidden;margin-top:10px}
+  .progress-fill{height:100%;background:var(--fill-accent);border-radius:2px;transition:width .3s}
+  .stat-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .stat{flex:1;min-width:80px;background:var(--surface-1);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+  .stat-n{font-size:20px;font-weight:500}
+  .stat-l{font-size:11px;color:var(--text-secondary);margin-top:2px}
+  .stat-n.ok{color:var(--text-success)}
+  .stat-n.er{color:var(--text-danger)}
+  .key-input{font-family:var(--font-mono);letter-spacing:.02em}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(24,95,165,.2);border-top-color:var(--fill-accent);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .help{font-size:11px;color:var(--text-muted);margin-top:4px}
+  .preview-table-wrap{overflow-x:auto;margin-top:10px;border:0.5px solid var(--border);border-radius:8px}
+  .preview-table{border-collapse:collapse;width:100%;font-size:12px}
+  .preview-table th{background:var(--surface-1);padding:6px 10px;text-align:left;font-weight:500;border-bottom:0.5px solid var(--border);white-space:nowrap}
+  .preview-table td{padding:5px 10px;border-bottom:0.5px solid var(--border);white-space:nowrap;font-family:var(--font-mono);font-size:11px}
+  .preview-table tr:last-child td{border-bottom:none}
+  .preview-table tr.err-row td{background:var(--bg-danger)}
+  .preview-table td.err-col{color:var(--text-danger);font-family:var(--font-sans);font-size:11px;font-weight:500;min-width:140px;max-width:200px;white-space:normal}
+  .divider{height:0.5px;background:var(--border);margin:16px 0}
+  .rule-chip{display:flex;align-items:center;gap:6px;background:var(--surface-1);border:0.5px solid var(--border);border-radius:var(--radius);padding:6px 10px;margin-bottom:6px}
+  .rule-chip .rc-label{font-size:12px;flex:1}
+  .rule-chip .rc-field{font-size:11px;font-family:var(--font-mono);color:var(--text-accent);background:var(--bg-accent);padding:1px 6px;border-radius:4px}
+  .rule-chip .rc-rm{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:15px;line-height:1;padding:2px}
+  .rule-chip .rc-rm:hover{color:var(--text-danger)}
+  .tabs{display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:14px}
+  .tab{padding:8px 14px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary);margin-bottom:-0.5px}
+  .tab.active{color:var(--text-accent);border-bottom-color:var(--border-accent)}
+  .tab:hover:not(.active){background:var(--surface-1)}
+  code{font-family:var(--font-mono);background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="h">
+  <div class="h-logo">Data<span>Bridge</span></div>
+  <div class="h-right">
+    <span class="badge">v1.0</span>
+    <a class="h-link" href="https://github.com/YOUR_USERNAME/databridge" target="_blank">GitHub ↗</a>
+  </div>
+</div>
+<div class="wrap">
+  <div id="app"></div>
+</div>
+<script>
+const state={
+  apiKey:localStorage.getItem('db_apikey')||'',
+  llmProvider:localStorage.getItem('db_provider')||'anthropic',
+  files:[],parsedData:{},
+  targetColumns:JSON.parse(localStorage.getItem('db_cols')||'[]'),
+  validationRules:JSON.parse(localStorage.getItem('db_rules')||'[]'),
+  outputRows:[],processing:false,progress:0,stats:null,
+  activeStep:1,activeTab:0,previewFile:null
+};
+function save(){
+  localStorage.setItem('db_apikey',state.apiKey);
+  localStorage.setItem('db_provider',state.llmProvider);
+  localStorage.setItem('db_cols',JSON.stringify(state.targetColumns));
+  localStorage.setItem('db_rules',JSON.stringify(state.validationRules));
+}
+function fmt(n){return n.toLocaleString()}
+function parseFile(file){
+  return new Promise((resolve,reject)=>{
+    const ext=file.name.split('.').pop().toLowerCase();
+    const reader=new FileReader();
+    if(ext==='csv'||ext==='txt'){
+      reader.onload=e=>{
+        const result=Papa.parse(e.target.result,{header:true,skipEmptyLines:true,dynamicTyping:false});
+        resolve({name:file.name,headers:result.meta.fields||[],rows:result.data});
+      };
+      reader.onerror=reject;reader.readAsText(file);
+    }else if(ext==='xlsx'||ext==='xls'){
+      reader.onload=e=>{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const data=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});
+        const headers=data.length>0?Object.keys(data[0]):[];
+        resolve({name:file.name,headers,rows:data});
+      };
+      reader.onerror=reject;reader.readAsArrayBuffer(file);
+    }else{reject(new Error('Unsupported: '+ext))}
+  });
+}
+function validateRow(row,targetCols,rules){
+  const errors=[];
+  for(const col of targetCols){
+    if(col.required){const val=row[col.name];if(val===undefined||val===null||String(val).trim()==='')errors.push('"'+col.name+'" is required');}
+  }
+  for(const rule of rules){
+    if(!rule.field||!rule.type)continue;
+    const val=row[rule.field];
+    if(val===undefined||String(val).trim()==='')continue;
+    const s=String(val).trim();
+    if(rule.type==='email'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))errors.push('"'+rule.field+'" must be a valid email');
+    else if(rule.type==='number'&&isNaN(Number(s)))errors.push('"'+rule.field+'" must be numeric');
+    else if(rule.type==='date'&&isNaN(Date.parse(s)))errors.push('"'+rule.field+'" must be a valid date');
+    else if(rule.type==='maxlen'&&rule.value&&s.length>parseInt(rule.value))errors.push('"'+rule.field+'" exceeds max length of '+rule.value);
+    else if(rule.type==='regex'&&rule.value){try{if(!new RegExp(rule.value).test(s))errors.push('"'+rule.field+'" format invalid')}catch(e){}}
+    else if(rule.type==='minval'&&rule.value&&!isNaN(Number(s))&&Number(s)<Number(rule.value))errors.push('"'+rule.field+'" must be >= '+rule.value);
+  }
+  return errors;
+}
+async function transformWithLLM(sourceHeaders,targetCols,sampleRows){
+  if(!state.apiKey)return null;
+  const prompt=`You are a data mapping expert. Map source columns to target columns.
+Source columns: ${JSON.stringify(sourceHeaders)}
+Target columns: ${JSON.stringify(targetCols.map(c=>c.name))}
+Sample row: ${JSON.stringify(sampleRows[0]||{})}
+Return ONLY valid JSON mapping each TARGET column to SOURCE column name, or null if no match.
+Example: {"Customer Name":"cust_name","Phone":"mobile_no","Email":null}
+No explanation, just JSON.`;
+  const isAnthropic=state.llmProvider==='anthropic';
+  const body=isAnthropic
+    ?{model:'claude-haiku-4-5-20251001',max_tokens:1000,messages:[{role:'user',content:prompt}]}
+    :{model:'gpt-4o-mini',max_tokens:1000,messages:[{role:'user',content:prompt}]};
+  const headers={'Content-Type':'application/json'};
+  if(isAnthropic){headers['x-api-key']=state.apiKey;headers['anthropic-version']='2023-06-01';}
+  else headers['Authorization']='Bearer '+state.apiKey;
+  const url=isAnthropic?'https://api.anthropic.com/v1/messages':'https://api.openai.com/v1/chat/completions';
+  try{
+    const res=await fetch(url,{method:'POST',headers,body:JSON.stringify(body)});
+    const data=await res.json();
+    const text=isAnthropic?(data.content?.[0]?.text||''):(data.choices?.[0]?.message?.content||'');
+    return JSON.parse(text.replace(/```json|```/g,'').trim());
+  }catch(e){return null}
+}
+async function processData(){
+  state.processing=true;state.progress=0;state.stats=null;render();
+  const allRows=[];
+  const fileNames=Object.keys(state.parsedData);
+  let totalRaw=0;
+  for(const fn of fileNames)totalRaw+=state.parsedData[fn].rows.length;
+  let processed=0;
+  for(const fn of fileNames){
+    const{headers,rows}=state.parsedData[fn];
+    let mapping=null;
+    if(state.apiKey&&state.targetColumns.length>0)mapping=await transformWithLLM(headers,state.targetColumns,rows.slice(0,3));
+    const CHUNK=500;
+    for(let i=0;i<rows.length;i+=CHUNK){
+      const chunk=rows.slice(i,i+CHUNK);
+      for(const raw of chunk){
+        let mapped={};
+        if(mapping){for(const col of state.targetColumns){const src=mapping[col.name];mapped[col.name]=src?(raw[src]??''):'';}}
+        else{for(const col of state.targetColumns){mapped[col.name]=raw[col.name]??raw[col.name.toLowerCase()]??'';}}
+        const errs=validateRow(mapped,state.targetColumns,state.validationRules);
+        if(errs.length)mapped['_validation_errors']=errs.join('; ');
+        mapped['_source_file']=fn;
+        allRows.push(mapped);processed++;
+      }
+      state.progress=Math.round((processed/totalRaw)*100);render();
+      await new Promise(r=>setTimeout(r,0));
+    }
+  }
+  const errRows=allRows.filter(r=>r['_validation_errors']);
+  state.outputRows=allRows;
+  state.stats={total:allRows.length,ok:allRows.length-errRows.length,errors:errRows.length};
+  state.processing=false;state.activeStep=4;render();
+}
+function downloadOutput(type){
+  const cols=[...state.targetColumns.map(c=>c.name),'_source_file','_validation_errors'];
+  const rows=state.outputRows;
+  let subset=rows,filename='transformed_output.xlsx',sheetName='Output';
+  if(type==='errors'){subset=rows.filter(r=>r['_validation_errors']);filename='errors_only.xlsx';}
+  else if(type==='valid'){subset=rows.filter(r=>!r['_validation_errors']);filename='valid_rows.xlsx';sheetName='Valid Rows';}
+  const useCols=type==='valid'?state.targetColumns.map(c=>c.name):cols;
+  const wsData=[useCols,...subset.map(r=>useCols.map(c=>r[c]||''))];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(wsData),sheetName);
+  XLSX.writeFile(wb,filename);
+}
+function ruleLabel(r){
+  if(r.type==='email')return'Must be valid email';
+  if(r.type==='number')return'Must be numeric';
+  if(r.type==='date')return'Must be valid date';
+  if(r.type==='maxlen')return'Max length: '+r.value;
+  if(r.type==='minval')return'Min value: '+r.value;
+  if(r.type==='regex')return'Regex: '+r.value;
+  return r.type;
+}
+function buildStep(num,title,sub,open,done,content){
+  const nc=done?'done':(open?'':'inactive');
+  const ni=done?'✓':num;
+  return`<div class="step">
+<div class="step-hd" data-step="${num}">
+  <div class="step-num ${nc}">${ni}</div>
+  <div class="step-title">${title}</div>
+  <div class="step-sub">${sub}</div>
+  <div class="chevron ${open?'open':''}">▼</div>
+</div>
+${open?`<div class="step-body">${content}</div>`:''}
+</div>`
+}
+function buildS1(){
+  const f=state.files;const pd=state.parsedData;
+  let prev='';
+  if(state.previewFile&&pd[state.previewFile]){
+    const{headers,rows}=pd[state.previewFile];
+    const s=rows.slice(0,5);
+    prev=`<div class="preview-table-wrap" style="max-height:160px;overflow-y:auto"><table class="preview-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${s.map(r=>`<tr>${headers.map(h=>`<td>${r[h]||''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  return`<div class="drop-zone" id="dropzone">
+<div style="font-size:22px;color:var(--text-muted)">📄</div>
+<div style="font-size:13px;font-weight:500;margin-top:6px">Drop files here or <span style="color:var(--text-accent);cursor:pointer" id="browse-btn">browse</span></div>
+<p>CSV, XLS, XLSX · Up to 50,000 rows per file · All processing in browser</p>
+<input type="file" id="file-input" multiple accept=".csv,.xlsx,.xls,.txt" style="display:none">
+</div>
+${f.length>0?`<div class="file-list">${f.map((file,i)=>`<div class="file-chip"><div><span class="fn">${file.name}</span><span class="fs">${pd[file.name]?fmt(pd[file.name].rows.length)+' rows · '+pd[file.name].headers.length+' cols':'Parsing...'}</span></div><div style="display:flex;gap:6px;align-items:center">${pd[file.name]?`<button class="btn" style="font-size:11px;padding:3px 8px" data-preview="${file.name}">Preview</button>`:''}<button class="file-rm" data-rm="${i}">×</button></div></div>`).join('')}</div>`:''}
+${state.previewFile&&prev?`<div style="margin-top:10px"><span class="lbl" style="margin-top:0">Preview: ${state.previewFile}</span>${prev}</div>`:''}
+${f.length>0?`<div style="margin-top:14px"><button class="btn btn-primary" id="next-to-2">Continue to target format →</button></div>`:''}`;
+}
+function buildS2(){
+  const cols=state.targetColumns;
+  return`<span class="lbl" style="margin-top:0">Target output columns</span>
+<p class="help">Define the schema your output file must match. Columns appear in export in this order.</p>
+${cols.length>0?`<div class="col-grid" style="margin-bottom:4px"><div class="col-hd">Column name</div><div class="col-hd">Type</div><div class="col-hd">Required</div></div>
+${cols.map((c,i)=>`<div class="col-grid"><input type="text" value="${c.name}" data-col-name="${i}" style="font-family:var(--font-mono);font-size:12px"><select data-col-type="${i}"><option value="text" ${c.type==='text'?'selected':''}>Text</option><option value="number" ${c.type==='number'?'selected':''}>Number</option><option value="date" ${c.type==='date'?'selected':''}>Date</option><option value="email" ${c.type==='email'?'selected':''}>Email</option></select><div style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="req-${i}" data-col-req="${i}" ${c.required?'checked':''} style="width:auto"><label for="req-${i}" style="font-size:12px;color:var(--text-secondary)">Req</label><button class="file-rm" data-rm-col="${i}" style="margin-left:4px">×</button></div></div>`).join('')}`:''}
+<div class="add-row"><input type="text" id="new-col-name" placeholder="Column name" style="max-width:200px"><select id="new-col-type" style="max-width:110px"><option value="text">Text</option><option value="number">Number</option><option value="date">Date</option><option value="email">Email</option></select><button class="btn" id="add-col-btn">+ Add column</button></div>
+<div class="divider"></div>
+<button class="btn" id="import-schema-btn">Import from JSON schema</button>
+<span class="help" style="display:inline-block;margin-left:8px">Format: [{"name":"col","type":"text","required":true}]</span>
+<div id="schema-import-area" style="display:none;margin-top:8px"><textarea id="schema-json" placeholder='[{"name":"customer_id","type":"text","required":true},{"name":"email","type":"email","required":false}]' style="height:70px"></textarea><button class="btn btn-primary" id="apply-schema-btn" style="margin-top:6px">Apply schema</button></div>
+${cols.length>0?`<div style="margin-top:14px"><button class="btn btn-primary" id="next-to-3">Continue to validation rules →</button></div>`:''}`;
+}
+function buildS3(){
+  const rules=state.validationRules;
+  const colNames=state.targetColumns.map(c=>c.name);
+  return`<div class="tabs"><div class="tab ${state.activeTab===0?'active':''}" data-tab="0">Validation rules</div><div class="tab ${state.activeTab===1?'active':''}" data-tab="1">LLM settings</div></div>
+${state.activeTab===0?`<p class="help">Applied row by row. Required-field checks run automatically based on column config above.</p>
+${rules.map((r,i)=>`<div class="rule-chip"><span class="rc-field">${r.field||'?'}</span><span class="rc-label">${ruleLabel(r)}</span><button class="rc-rm" data-rm-rule="${i}">×</button></div>`).join('')}
+<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:flex-end">
+<div><div class="lbl" style="margin-top:0">Field</div><select id="rule-field" style="width:160px"><option value="">-- select field --</option>${colNames.map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
+<div><div class="lbl" style="margin-top:0">Rule type</div><select id="rule-type" style="width:140px"><option value="email">Valid email</option><option value="number">Is numeric</option><option value="date">Valid date</option><option value="maxlen">Max length</option><option value="minval">Min value</option><option value="regex">Regex match</option></select></div>
+<div id="rule-val-wrap" style="display:none"><div class="lbl" style="margin-top:0">Value</div><input type="text" id="rule-value" placeholder="e.g. 100" style="width:90px"></div>
+<button class="btn" id="add-rule-btn" style="margin-top:18px">+ Add rule</button>
+</div>
+<div style="margin-top:14px"><button class="btn btn-primary" id="next-to-4">Continue to transform →</button></div>`
+:`<div class="info-box">LLM is optional. Without it, columns are matched by exact name. With it, smart column mapping works across differently-named source files — useful when you receive data from multiple vendors.</div>
+<span class="lbl">Provider</span>
+<select id="llm-provider" style="width:180px"><option value="anthropic" ${state.llmProvider==='anthropic'?'selected':''}>Anthropic (Claude Haiku)</option><option value="openai" ${state.llmProvider==='openai'?'selected':''}>OpenAI (GPT-4o mini)</option></select>
+<span class="lbl">API key</span>
+<input type="password" id="api-key-input" class="key-input" value="${state.apiKey}" placeholder="Stored in your browser only — never sent to our servers">
+<p class="help">Your key is stored in localStorage and sent directly to the LLM provider. DataBridge has no backend.</p>
+<div style="margin-top:10px"><button class="btn btn-primary" id="save-llm-btn">Save settings</button></div>`}`;
+}
+function buildS4(){
+  const s=state;
+  if(s.processing)return`<div class="info-box" style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Processing rows... ${s.progress}% complete</div><div class="progress-bar"><div class="progress-fill" style="width:${s.progress}%"></div></div>`;
+  if(!s.stats){
+    const ready=s.files.length>0&&s.targetColumns.length>0;
+    return`${!ready?`<div class="warn-box">Complete steps 1 and 2 before running the transform.</div>`:`<div class="info-box">Ready to process ${fmt(Object.values(s.parsedData).reduce((a,b)=>a+b.rows.length,0))} rows across ${s.files.length} file${s.files.length>1?'s':''}.</div>`}
+<div style="margin-top:12px"><button class="btn btn-primary" id="run-btn" ${!ready?'disabled':''}>Run transform</button></div>`;
+  }
+  const preview=s.outputRows.slice(0,8);
+  const cols=[...s.targetColumns.map(c=>c.name),'_source_file','_validation_errors'];
+  const hasErr=s.stats.errors>0;
+  return`<div class="stat-row">
+<div class="stat"><div class="stat-n">${fmt(s.stats.total)}</div><div class="stat-l">Total rows</div></div>
+<div class="stat"><div class="stat-n ok">${fmt(s.stats.ok)}</div><div class="stat-l">Valid rows</div></div>
+<div class="stat"><div class="stat-n ${hasErr?'er':'ok'}">${fmt(s.stats.errors)}</div><div class="stat-l">Error rows</div></div>
+</div>
+${hasErr?`<div class="err-box" style="margin-top:10px">Rows with errors have a <code>_validation_errors</code> column in the export.</div>`:`<div class="success-box" style="margin-top:10px">All rows passed validation.</div>`}
+<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+<button class="btn btn-primary" id="dl-all">Download all rows</button>
+${hasErr?`<button class="btn" id="dl-valid">Valid rows only</button><button class="btn" style="border-color:var(--border-danger);color:var(--text-danger)" id="dl-errors">Error rows only</button>`:''}
+</div>
+<span class="lbl" style="margin-top:16px">Preview (first 8 rows)</span>
+<div class="preview-table-wrap" style="max-height:220px;overflow-y:auto"><table class="preview-table"><thead><tr>${cols.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${preview.map(r=>`<tr class="${r['_validation_errors']?'err-row':''}">${cols.map(c=>`<td class="${c==='_validation_errors'&&r[c]?'err-col':''}">${r[c]||''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+<div style="margin-top:14px"><button class="btn" id="reset-btn">Start over</button></div>`;
+}
+function render(){document.getElementById('app').innerHTML=buildUI();bindEvents();}
+function buildUI(){
+  const s=state;
+  const step1Done=s.files.length>0,step2Done=s.targetColumns.length>0;
+  const totalRows=Object.values(s.parsedData).reduce((a,b)=>a+b.rows.length,0);
+  return`
+${buildStep(1,'Upload source files',s.files.length===0?'No files uploaded':`${s.files.length} file${s.files.length>1?'s':''} · ${fmt(totalRows)} rows`,s.activeStep===1,step1Done,buildS1())}
+${buildStep(2,'Define target format',s.targetColumns.length===0?'Not configured':`${s.targetColumns.length} columns defined`,s.activeStep===2,step2Done,buildS2())}
+${buildStep(3,'Validation rules + LLM',s.validationRules.length===0?'No rules added':`${s.validationRules.length} rule${s.validationRules.length>1?'s':''}`,s.activeStep===3,step2Done,buildS3())}
+${buildStep(4,'Transform & download',s.stats?`${fmt(s.stats.total)} rows processed`:'Run transform to see results',s.activeStep===4,false,buildS4())}`;
+}
+function updateRuleVal(){
+  const t=document.getElementById('rule-type')?.value;
+  const w=document.getElementById('rule-val-wrap');
+  if(w)w.style.display=(t==='maxlen'||t==='minval'||t==='regex')?'':'none';
+}
+function bindEvents(){
+  document.querySelectorAll('.step-hd').forEach(el=>{
+    el.addEventListener('click',()=>{const n=parseInt(el.dataset.step);state.activeStep=state.activeStep===n?0:n;render();});
+  });
+  const dz=document.getElementById('dropzone'),fi=document.getElementById('file-input');
+  if(dz){
+    dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+    dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+    dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');handleFiles(e.dataTransfer.files);});
+    dz.addEventListener('click',()=>fi&&fi.click());
+  }
+  if(fi)fi.addEventListener('change',e=>handleFiles(e.target.files));
+  const bb=document.getElementById('browse-btn');
+  if(bb)bb.addEventListener('click',e=>{e.stopPropagation();fi&&fi.click();});
+  document.querySelectorAll('[data-rm]').forEach(b=>{
+    b.addEventListener('click',e=>{e.stopPropagation();const i=parseInt(b.dataset.rm);const fn=state.files[i].name;state.files.splice(i,1);delete state.parsedData[fn];if(state.previewFile===fn)state.previewFile=null;render();});
+  });
+  document.querySelectorAll('[data-preview]').forEach(b=>{
+    b.addEventListener('click',e=>{e.stopPropagation();state.previewFile=state.previewFile===b.dataset.preview?null:b.dataset.preview;render();});
+  });
+  const n2=document.getElementById('next-to-2');if(n2)n2.addEventListener('click',()=>{state.activeStep=2;render();});
+  document.querySelectorAll('[data-col-name]').forEach(el=>{el.addEventListener('input',()=>{state.targetColumns[parseInt(el.dataset.colName)].name=el.value;save();});});
+  document.querySelectorAll('[data-col-type]').forEach(el=>{el.addEventListener('change',()=>{state.targetColumns[parseInt(el.dataset.colType)].type=el.value;save();});});
+  document.querySelectorAll('[data-col-req]').forEach(el=>{el.addEventListener('change',()=>{state.targetColumns[parseInt(el.dataset.colReq)].required=el.checked;save();});});
+  document.querySelectorAll('[data-rm-col]').forEach(b=>{b.addEventListener('click',e=>{e.stopPropagation();state.targetColumns.splice(parseInt(b.dataset.rmCol),1);save();render();});});
+  const acb=document.getElementById('add-col-btn');
+  if(acb)acb.addEventListener('click',()=>{const n=document.getElementById('new-col-name')?.value.trim();const t=document.getElementById('new-col-type')?.value||'text';if(!n)return;state.targetColumns.push({name:n,type:t,required:false});save();render();});
+  const isb=document.getElementById('import-schema-btn');
+  if(isb)isb.addEventListener('click',()=>{const a=document.getElementById('schema-import-area');if(a)a.style.display=a.style.display==='none'?'':'none';});
+  const asb=document.getElementById('apply-schema-btn');
+  if(asb)asb.addEventListener('click',()=>{try{const j=JSON.parse(document.getElementById('schema-json').value);if(Array.isArray(j)){state.targetColumns=j;save();render();}}catch(e){alert('Invalid JSON');}});
+  const n3=document.getElementById('next-to-3');if(n3)n3.addEventListener('click',()=>{state.activeStep=3;render();});
+  document.querySelectorAll('[data-tab]').forEach(el=>{el.addEventListener('click',()=>{state.activeTab=parseInt(el.dataset.tab);render();});});
+  document.querySelectorAll('[data-rm-rule]').forEach(b=>{b.addEventListener('click',e=>{e.stopPropagation();state.validationRules.splice(parseInt(b.dataset.rmRule),1);save();render();});});
+  const arb=document.getElementById('add-rule-btn');
+  if(arb)arb.addEventListener('click',()=>{const f=document.getElementById('rule-field')?.value;const t=document.getElementById('rule-type')?.value;const v=document.getElementById('rule-value')?.value.trim()||'';if(!f||!t)return;state.validationRules.push({field:f,type:t,value:v});save();render();});
+  const rt=document.getElementById('rule-type');if(rt){rt.addEventListener('change',updateRuleVal);updateRuleVal();}
+  const n4=document.getElementById('next-to-4');if(n4)n4.addEventListener('click',()=>{state.activeStep=4;render();});
+  const slb=document.getElementById('save-llm-btn');
+  if(slb)slb.addEventListener('click',()=>{state.apiKey=document.getElementById('api-key-input')?.value.trim()||'';state.llmProvider=document.getElementById('llm-provider')?.value||'anthropic';save();render();});
+  const rb=document.getElementById('run-btn');if(rb)rb.addEventListener('click',()=>processData());
+  const da=document.getElementById('dl-all');if(da)da.addEventListener('click',()=>downloadOutput('all'));
+  const dv=document.getElementById('dl-valid');if(dv)dv.addEventListener('click',()=>downloadOutput('valid'));
+  const de=document.getElementById('dl-errors');if(de)de.addEventListener('click',()=>downloadOutput('errors'));
+  const rst=document.getElementById('reset-btn');
+  if(rst)rst.addEventListener('click',()=>{state.files=[];state.parsedData={};state.outputRows=[];state.stats=null;state.previewFile=null;state.activeStep=1;render();});
+}
+async function handleFiles(fileList){
+  for(const f of Array.from(fileList)){
+    if(!state.files.find(x=>x.name===f.name)){
+      state.files.push(f);render();
+      try{const parsed=await parseFile(f);state.parsedData[f.name]=parsed;render();}
+      catch(e){alert('Could not parse '+f.name+': '+e.message);state.files=state.files.filter(x=>x.name!==f.name);render();}
+    }
+  }
+}
+render();
+</script>
+</body>
+</html>
