@@ -1,69 +1,34 @@
 # DataBridge
 
-**Zero-server master data import tool.** Transforms and validates data from any source format (CSV, XLS, XLSX) into your required output schema — entirely in the browser. No backend. No data leaves the user's machine.
+DataBridge is a browser-based master data import tool. It maps CSV, XLS, XLSX, and TXT data to a target schema, applies validations, and exports an XLSX workbook with validation errors marked per row.
 
-## What it does
+## Run locally
 
-Operations and IT teams routinely receive master data from multiple vendors in inconsistent formats. DataBridge lets you:
+Open `index.html` in a modern browser. The parser libraries are included in `vendor/`; core mapping, validation, and export work without a network connection. Optional AI mapping requires internet access and a key for Anthropic or OpenAI. For a local HTTP origin, run `./run-local.sh` (Python 3) and open `http://127.0.0.1:4173`.
 
-1. Upload one or more CSV/XLS/XLSX files (up to 50,000 rows each)
-2. Define your target output schema (column names, types, required flags)
-3. Add validation rules (email, numeric, date, max length, regex)
-4. Transform and download — valid rows clean, error rows flagged with an extra `_validation_errors` column
+## Workflow
 
-Optional: connect your own Anthropic or OpenAI API key for smart column mapping when source headers don't match your target schema.
+1. Upload one or more source files (up to 50,000 rows per file).
+2. Define the target columns or import a JSON schema.
+3. Configure validation rules and, optionally, AI assisted column mapping.
+4. Review the result summary and download all, valid, or error rows.
 
-## Deploy in 60 seconds
+## Data and security
 
-### GitHub Pages (free)
+- Files are parsed and transformed in the browser. There is no DataBridge server or database.
+- AI mapping is optional. When enabled, up to three sample rows and source/target headers for each file are sent directly to the selected provider with the user's key. The provider's data handling and billing terms apply.
+- The key, schema, and validation rules are stored in origin-scoped browser `localStorage`. This storage is plaintext and accessible to the browser profile and same-origin scripts. Remove the key in browser storage or clear site data when finished.
+- Never use a shared or managed provider key in this public static client. A managed service requires an authenticated backend and server-side secret storage.
+- Treat exports as untrusted until reviewed. Validate mappings and errors before using data in operational systems.
 
-1. Fork this repo
-2. Go to **Settings → Pages → Source → Deploy from branch → main / root**
-3. Your tool is live at `https://yourusername.github.io/databridge`
+## System design
 
-### Cloudflare Pages (free, faster)
+See [architecture and security decisions](docs/architecture.md), [deployment](docs/deployment.md), and [vendored dependencies](vendor/README.md). The application is a static, browser-only MVP with no build step or server-side tier.
 
-1. Go to [pages.cloudflare.com](https://pages.cloudflare.com)
-2. Connect your GitHub repo or drag-drop the `index.html`
-3. Done — you get a `*.pages.dev` URL and can add a custom domain
+## Deployment
 
-### Offline / air-gapped
-
-Just open `index.html` in any modern browser. No server required. Works fully offline (LLM mapping needs internet only when you enter an API key).
-
-## Customise for your client
-
-Edit these lines at the top of `index.html`:
-
-```html
-<title>DataBridge — Master Data Import Tool</title>   <!-- change to client name -->
-<meta name="description" content="...">               <!-- update description -->
-```
-
-And this in the header:
-```html
-<div class="h-logo">Data<span>Bridge</span></div>     <!-- swap branding -->
-<a class="h-link" href="https://github.com/YOUR_USERNAME/databridge">GitHub ↗</a>
-```
-
-## LLM cost
-
-LLM is called **once per source file** (not per row) to detect column mappings. Using Claude Haiku: ~$0.0003 per file. Using GPT-4o mini: ~$0.0002 per file. For most implementations the cost is negligible.
-
-Your API key is stored in `localStorage` only and sent directly to the LLM provider. DataBridge has no backend and cannot access your key.
-
-## Browser support
-
-Chrome 90+, Firefox 88+, Safari 15+, Edge 90+.
-
-## Roadmap ideas
-
-- Value transformation rules (uppercase, date format normalisation, lookup tables)
-- Google Sheets export
-- Saved schema profiles (named, switchable)
-- Multi-sheet XLSX support
-- Column mapping preview before full transform
+The repository includes a GitHub Actions workflow that publishes the static site from `main` to GitHub Pages. Configure GitHub Pages to use GitHub Actions in repository settings. Deployment is public; do not commit keys or customer files.
 
 ## License
 
-MIT — use freely, modify, redistribute, white-label for clients.
+MIT. Third-party dependency licenses are included alongside the vendored bundles.
