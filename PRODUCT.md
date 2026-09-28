@@ -1,33 +1,59 @@
-# DataBridge — Product brief
+# DataBridge — Product plan
 
-## Problem and evidence
+## What it does
 
-In SCM-focused ERP implementations, data migration and cutover teams commonly receive vendor and legacy master data as differently structured CSV and spreadsheet files. Analysts normalize headers, copy data into a target template, and check required fields through one-off spreadsheet formulas. The workaround can consume repeated analyst time, is difficult to reproduce consistently across suppliers, and leaves a weak audit trail for unresolved rows.
+DataBridge takes a CSV or Excel file and a list of required output columns. It lets an analyst match the input columns to the output columns, check each row, and download a new Excel file. Rows that fail a check carry an error message.
 
-This is a practitioner problem hypothesis grounded in common ERP data-readiness workflows. This repository has no documented participant interview, usage telemetry, or pilot result yet. No time-savings or defect-reduction claim is made.
+Optional AI mapping can suggest which input column matches each output column. It sends the headers and up to three sample rows per file to the selected AI provider. Without AI, DataBridge matches columns by name.
 
-## Product choice and prioritization
+## Who it is for
 
-Prioritized one narrow, recurring task: map source columns to a target schema, apply explicit checks, and make rejected rows visible in an export. CSV/XLS/XLSX support and deterministic validations come first because teams need a useful workflow even when they cannot send data to an AI service. AI mapping is optional and limited to a few sample rows per file.
+An ERP data analyst preparing vendor or legacy master data for review before a migration or cutover.
 
-## Success criteria
+## The problem
 
-Run a timed comparison with one implementation analyst on a representative, approved sample dataset. Record a manual baseline and DataBridge result for:
+The analyst receives files whose column names and layouts differ from the ERP import template. Today, the analyst renames columns, copies data into a new file, adds spreadsheet checks, and follows up on bad rows. The same work must be repeated for each source. A missed error can delay the next migration step.
 
-- elapsed time from raw file to reviewed, target-shaped output;
-- mapping corrections required before approval;
-- invalid rows detected and missed against a manually verified reference;
-- participant confidence in explaining each flagged row and its source.
+This describes the problem the product is designed to address. No pilot or measured time savings have been reported.
 
-Proposed pilot acceptance: complete the task with lower elapsed time than the participant’s normal workflow, detect every seeded validation issue, and require no more mapping corrections than the current manual process. Report the raw counts, dataset characteristics, and limitations; do not generalize one pilot into a broad ROI claim.
+## First version
 
-## Deferred
+1. Upload CSV, XLS, or XLSX files.
+2. Set the output columns, required fields, and checks such as email, number, date, maximum length, minimum value, or regular expression.
+3. Optionally ask AI to suggest column matches.
+4. Run the checks and review the row count and errors.
+5. Download all rows, only valid rows, or only rows with errors.
 
-- direct ERP connectors, write-back, migration orchestration, and audit history;
-- shared schemas, team accounts, role-based approvals, and managed provider keys;
-- large-file streaming, multi-sheet policy, and value transformation/catalog matching;
-- claims of compliance, production readiness, or automatic acceptance of source data.
+Files are processed in the browser. The app does not write to an ERP. Settings and the optional API key are stored in browser storage.
 
-## Learning to capture
+## Why this scope
 
-After the pilot, document where the analyst spent time, which rules were missing, how often AI mapping was corrected, what data could not be sent to a provider, and whether the error export fits the team’s cutover controls. Update this brief with the participant role, date, sample size, observed results, and decisions. Keep confidential source files out of Git.
+Start with file mapping and row checks because these are the steps an analyst repeats before loading data. Keep exact-name mapping and manual review available when AI cannot be used. Make errors visible in the downloaded file so the analyst can send them back for correction.
+
+## Not included
+
+- connecting to an ERP or loading data into one;
+- team accounts, approvals, shared schemas, or a history of changes;
+- changing source values automatically;
+- checking whether a value is correct in the business context;
+- handling several worksheets as one combined input.
+
+## Pilot and measures
+
+**Status: no pilot run yet.** Test with one data analyst and an approved sample file. First time the analyst's normal process; then time the same task with DataBridge. Have a reviewer prepare the correct list of errors before the trial.
+
+Record:
+
+- minutes to produce a reviewed output;
+- number of column matches the analyst had to correct;
+- known errors found and known errors missed;
+- whether each error message tells the analyst what to fix.
+
+Agree in advance what counts as an acceptable result. A faster file is not a success if it misses a known error. Do not publish customer files or claim savings until a pilot has been run and permission is granted.
+
+## Questions to answer
+
+- Which checks do analysts repeat most often?
+- How many AI-suggested matches need correction?
+- Can teams share the error file with data owners as-is?
+- Which data is not allowed to be sent to an AI provider?
