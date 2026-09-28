@@ -1,6 +1,10 @@
 # DataBridge
 
-DataBridge is a browser-based master data import tool. It maps CSV, XLS, XLSX, and TXT data to a target schema, applies validations, and exports an XLSX workbook with validation errors marked per row.
+ERP implementations repeatedly reach the same data-readiness bottleneck: vendor, legacy, and business-owned files use inconsistent headers and formats, while teams reconcile mappings and repair rows in spreadsheets before migration or cutover. That manual workaround consumes analyst time, makes validation hard to repeat, and obscures which rows are still unsafe to load.
+
+DataBridge is a browser-based utility for defining a target schema, mapping source columns, applying row-level validation, and exporting an XLSX file with errors flagged. Its goal is to make this preparation step reviewable and repeatable. The app is the delivery vehicle; the product decisions and pilot criteria are in [PRODUCT.md](PRODUCT.md).
+
+**Current evidence status:** this repository does not yet document a partner or internal pilot. Do not interpret the problem statement as measured savings or customer validation. A pilot plan and baseline measures are included in `PRODUCT.md`.
 
 ## Run locally
 
